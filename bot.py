@@ -3,7 +3,6 @@ from aiogram import Bot
 
 
 class Messager:
-    """A simple wrapper over aiogram bot"""
 
     def __init__(self, token: str, chat_id: str) -> None:
         self.bot = Bot(token=token)

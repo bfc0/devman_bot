@@ -1,45 +1,44 @@
 import os
 import asyncio
 from dotenv import load_dotenv
-import typing as t
 from bot import Messager
-from polling import long_polling
+import logging
+from polling import poll_forever
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(levelname)s:  %(message)s')
 
 
 class ParamsMissing(Exception):
     pass
 
 
-def bootstrap() -> t.Coroutine:
-    load_dotenv()
-    BOT_TOKEN = os.environ.get("BOT_TOKEN")
-    API_TOKEN = os.environ.get("DEVMAN_TOKEN")
-    CHAT_ID = os.environ.get("CHAT_ID")
-    URL = "https://dvmn.org/api/long_polling/"
+load_dotenv()
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
+DEVMAN_TOKEN = os.environ.get("DEVMAN_TOKEN")
+TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
+URL = "https://dvmn.org/api/long_polling/"
 
-    if not all([BOT_TOKEN, API_TOKEN, CHAT_ID]):
-        raise ParamsMissing(
-            "Required BOT_TOKEN, DEVMAN_TOKEN, CHAT_ID. did you forget to set .env?"
-        )
 
-    bot = Messager(BOT_TOKEN, CHAT_ID)  # type:ignore
-
-    return long_polling(URL, API_TOKEN, bot)  # type:ignore
+if not all([TG_BOT_TOKEN, DEVMAN_TOKEN, TG_CHAT_ID]):
+    raise ParamsMissing(
+        "Required TG_BOT_TOKEN, DEVMAN_TOKEN, TG_CHAT_ID. did you forget to set .env?"
+    )
 
 
 async def main():
-
-    print("Started")
+    logging.info("Started bot")
 
     try:
-
-        poll_forever = bootstrap()
-        await poll_forever
+        bot = Messager(TG_BOT_TOKEN, TG_CHAT_ID)  # type:ignore
+        await poll_forever(URL, DEVMAN_TOKEN, bot)  # type:ignore
 
     except KeyboardInterrupt:
-        print("Bye-bye")
+        logging.info("Received CTRL-C")
+
     except ParamsMissing as e:
-        print(e)
+        print("error error")
+        logging.error(e)
         SystemExit(1)
 
 

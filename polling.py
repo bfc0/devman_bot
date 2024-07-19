@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import inspect
 import aiohttp
 import typing as t
@@ -8,16 +9,14 @@ from bot import Messager
 
 
 DEFAULT_TIMEOUT = 100
+ERROR_TIMEOUT = 3
 
 
-async def handle_response(
-    response: dict[str, t.Any], bot: Messager, headers: dict[str, str]
-) -> None:
+async def handle_response(response: dict[str, t.Any], bot: Messager) -> str | None:
 
     if response.get("status") == "timeout":
-        if (ts := response.get("timestamp_to_request")) is not None:
-            headers["timestamp"] = str(ts)
-            return
+        if ts := response.get("timestamp_to_request"):
+            return str(ts)
 
     if response.get("status") != "found":
         return
@@ -26,7 +25,7 @@ async def handle_response(
         return
 
     for attempt in attempts:
-        if attempt.get("is_negative") is True:
+        if attempt.get("is_negative"):
             message = inspect.cleandoc(
                 f""" You have failed your recent submission
             {attempt.get('lesson_title')} at
@@ -42,7 +41,7 @@ async def handle_response(
         await bot.send(message)
 
 
-async def long_polling(
+async def poll_forever(
     url: str, api_token: str, bot: Messager, timeout=DEFAULT_TIMEOUT
 ) -> None:
 
@@ -54,15 +53,18 @@ async def long_polling(
                 response = await session.get(url, headers=headers, timeout=timeout)
                 if response.status != 200:
                     continue
-                as_dict = await response.json()
-                await handle_response(as_dict, bot, headers)
+                response = await response.json()
+                timestamp = await handle_response(response, bot)
+
+                if timestamp:
+                    headers["timestamp"] = timestamp
 
             except asyncio.TimeoutError:
                 continue
 
             except aiohttp.ClientError as e:
-                print(f"error occurred: {e}")
-                await asyncio.sleep(3)
+                logging.error(f"error occured: {e}")
+                await asyncio.sleep(ERROR_TIMEOUT)
 
             except asyncio.CancelledError:
                 await bot.disconnect()

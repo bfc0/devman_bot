@@ -10,9 +10,9 @@ pip install -r requirements.txt
 
 ### Create .env:
 ```
-BOT_TOKEN=your_telegram_bot_token
-CHAT_ID=your_telegram_chat_id
-API_TOKEN=your_devman_token
+TG_BOT_TOKEN=your_telegram_bot_token
+TG_CHAT_ID=your_telegram_chat_id
+DEVMAN_TOKEN=your_devman_token
 ```
 Message BotFather to create your bot token
 
