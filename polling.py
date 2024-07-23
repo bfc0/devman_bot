@@ -1,22 +1,34 @@
 import asyncio
 import logging
 import inspect
+from aiogram import Bot
 import aiohttp
 import typing as t
 from aiohttp import ClientSession
 
-from bot import Messager
-
 
 DEFAULT_TIMEOUT = 100
 ERROR_TIMEOUT = 3
+NUM_TRIES = 3
 
 
-async def handle_response(response: dict[str, t.Any], bot: Messager) -> str | None:
+def prepare_sender(bot: Bot, tg_chat_id: str) -> t.Callable:
 
-    if response.get("status") == "timeout":
-        if ts := response.get("timestamp_to_request"):
-            return str(ts)
+    async def send_message(message: str):
+        for _ in range(NUM_TRIES):
+            try:
+                await bot.send_message(tg_chat_id, message)
+                return
+            except Exception as e:
+                logging.error(f"failed to send message: {e}")
+                await asyncio.sleep(ERROR_TIMEOUT)
+            finally:
+                await bot.session.close()
+
+    return send_message
+
+
+async def handle_response(response: dict[str, t.Any], send_message: t.Callable):
 
     if response.get("status") != "found":
         return
@@ -38,11 +50,11 @@ async def handle_response(response: dict[str, t.Any], bot: Messager) -> str | No
             {attempt.get('lesson_url')}"""
             )
 
-        await bot.send(message)
+        await send_message(message)
 
 
 async def poll_forever(
-    url: str, api_token: str, bot: Messager, timeout=DEFAULT_TIMEOUT
+    url: str, api_token: str, send_message: t.Callable, timeout=DEFAULT_TIMEOUT
 ) -> None:
 
     headers = {"Authorization": f"Token {api_token}"}
@@ -53,11 +65,11 @@ async def poll_forever(
                 response = await session.get(url, headers=headers, timeout=timeout)
                 if response.status != 200:
                     continue
-                response = await response.json()
-                timestamp = await handle_response(response, bot)
+                submission_data = await response.json()
+                await handle_response(submission_data, send_message)
 
-                if timestamp:
-                    headers["timestamp"] = timestamp
+                if timestamp := submission_data.get("timestamp_to_request"):
+                    headers["timestamp"] = str(timestamp)
 
             except asyncio.TimeoutError:
                 continue
@@ -67,5 +79,4 @@ async def poll_forever(
                 await asyncio.sleep(ERROR_TIMEOUT)
 
             except asyncio.CancelledError:
-                await bot.disconnect()
                 return
