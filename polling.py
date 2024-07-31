@@ -12,20 +12,16 @@ ERROR_TIMEOUT = 3
 NUM_TRIES = 3
 
 
-def prepare_sender(bot: Bot, tg_chat_id: str) -> t.Callable:
-
-    async def send_message(message: str):
-        for _ in range(NUM_TRIES):
-            try:
-                await bot.send_message(tg_chat_id, message)
-                return
-            except Exception as e:
-                logging.error(f"failed to send message: {e}")
-                await asyncio.sleep(ERROR_TIMEOUT)
-            finally:
-                await bot.session.close()
-
-    return send_message
+async def send_message(bot: Bot, tg_chat_id: str, message: str):
+    for _ in range(NUM_TRIES):
+        try:
+            await bot.send_message(tg_chat_id, message)
+            return
+        except Exception as e:
+            logging.error(f"failed to send message: {e}")
+            await asyncio.sleep(ERROR_TIMEOUT)
+        finally:
+            await bot.session.close()
 
 
 async def handle_response(response: dict[str, t.Any], send_message: t.Callable):
@@ -65,10 +61,10 @@ async def poll_forever(
                 response = await session.get(url, headers=headers, timeout=timeout)
                 if response.status != 200:
                     continue
-                submission_data = await response.json()
-                await handle_response(submission_data, send_message)
+                payload = await response.json()
+                await handle_response(payload, send_message)
 
-                if timestamp := submission_data.get("timestamp_to_request"):
+                if timestamp := payload.get("timestamp_to_request"):
                     headers["timestamp"] = str(timestamp)
 
             except asyncio.TimeoutError:
