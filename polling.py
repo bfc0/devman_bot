@@ -24,12 +24,12 @@ async def send_message(bot: Bot, tg_chat_id: str, message: str):
             await bot.session.close()
 
 
-async def handle_response(response: dict[str, t.Any], send_message: t.Callable):
+async def handle_payload(payload: dict[str, t.Any], send_message: t.Callable):
 
-    if response.get("status") != "found":
+    if payload.get("status") != "found":
         return
 
-    if not isinstance(attempts := response.get("new_attempts"), list):
+    if not isinstance(attempts := payload.get("new_attempts"), list):
         return
 
     for attempt in attempts:
@@ -62,7 +62,7 @@ async def poll_forever(
                 if response.status != 200:
                     continue
                 payload = await response.json()
-                await handle_response(payload, send_message)
+                await handle_payload(payload, send_message)
 
                 if timestamp := payload.get("timestamp_to_request"):
                     headers["timestamp"] = str(timestamp)
