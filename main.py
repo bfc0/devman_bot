@@ -7,14 +7,22 @@ from functools import partial
 from polling import poll_forever, send_message
 
 
+class LogsHandler(logging.Handler):
+    def __init__(self, coro):
+        super().__init__()
+        self.coro = coro
+
+    def emit(self, record):
+        text = self.format(record)
+        loop = asyncio.get_running_loop()
+        asyncio.run_coroutine_threadsafe(self.coro(text), loop)
+
+
 class ParamsMissing(Exception):
     pass
 
 
 async def main():
-
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s:  %(message)s")
-    logging.info("Started bot")
 
     load_dotenv()
     tg_bot_token = os.environ.get("TG_BOT_TOKEN")
@@ -27,16 +35,22 @@ async def main():
             "Required TG_BOT_TOKEN, DEVMAN_TOKEN, TG_CHAT_ID. did you forget to set .env?"
         )
 
+    bot = Bot(token=tg_bot_token)  # type:ignore
+    send_msg = partial(send_message, bot, tg_chat_id)  # type:ignore
+    logger = logging.getLogger("tg logger")
+    handler = LogsHandler(send_msg)
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    logger.info("Started dvmn bot")
+
     try:
-        bot = Bot(token=tg_bot_token)  # type:ignore
-        send_msg = partial(send_message, bot, tg_chat_id)  # type:ignore
         await poll_forever(url, devman_token, send_msg)  # type:ignore
 
     except KeyboardInterrupt:
-        logging.info("Received CTRL-C")
+        logger.info("Received CTRL-C")
 
     except ParamsMissing as e:
-        logging.error(e)
+        logger.error(e)
         SystemExit(1)
 
 

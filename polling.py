@@ -11,14 +11,17 @@ DEFAULT_TIMEOUT = 100
 ERROR_TIMEOUT = 3
 NUM_TRIES = 3
 
+logger = logging.getLogger("tg logger")
+
 
 async def send_message(bot: Bot, tg_chat_id: str, message: str):
+    print(f"sending message {message}")
     for _ in range(NUM_TRIES):
         try:
             await bot.send_message(tg_chat_id, message)
             return
         except Exception as e:
-            logging.error(f"failed to send message: {e}")
+            logger.error(f"failed to send message: {e}")
             await asyncio.sleep(ERROR_TIMEOUT)
         finally:
             await bot.session.close()
@@ -71,7 +74,7 @@ async def poll_forever(
                 continue
 
             except aiohttp.ClientError as e:
-                logging.error(f"error occured: {e}")
+                logger.error(f"error occured: {e}")
                 await asyncio.sleep(ERROR_TIMEOUT)
 
             except asyncio.CancelledError:
