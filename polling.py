@@ -15,7 +15,6 @@ logger = logging.getLogger("tg logger")
 
 
 async def send_message(bot: Bot, tg_chat_id: str, message: str):
-    print(f"sending message {message}")
     for _ in range(NUM_TRIES):
         try:
             await bot.send_message(tg_chat_id, message)

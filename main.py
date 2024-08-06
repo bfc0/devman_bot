@@ -38,16 +38,15 @@ async def main():
     bot = Bot(token=tg_bot_token)  # type:ignore
     send_msg = partial(send_message, bot, tg_chat_id)  # type:ignore
     logger = logging.getLogger("tg logger")
-    handler = LogsHandler(send_msg)
-    handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    logger.addHandler(LogsHandler(send_msg))
+    logger.setLevel(logging.INFO)
     logger.info("Started dvmn bot")
 
     try:
         await poll_forever(url, devman_token, send_msg)  # type:ignore
 
     except KeyboardInterrupt:
-        logger.info("Received CTRL-C")
+        logger.info("Shutting down")
 
     except ParamsMissing as e:
         logger.error(e)
