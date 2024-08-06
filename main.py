@@ -3,19 +3,21 @@ import asyncio
 from aiogram import Bot
 from dotenv import load_dotenv
 import logging
+import typing as t
+from logging.handlers import SysLogHandler
 from functools import partial
 from polling import poll_forever, send_message
 
 
 class LogsHandler(logging.Handler):
-    def __init__(self, coro):
+    def __init__(self, send_msg: t.Callable):
         super().__init__()
-        self.coro = coro
+        self.send_msg = send_msg
 
     def emit(self, record):
         text = self.format(record)
         loop = asyncio.get_running_loop()
-        asyncio.run_coroutine_threadsafe(self.coro(text), loop)
+        asyncio.run_coroutine_threadsafe(self.send_msg(text), loop)
 
 
 class ParamsMissing(Exception):
@@ -23,6 +25,9 @@ class ParamsMissing(Exception):
 
 
 async def main():
+    logger = logging.getLogger("tg logger")
+    logger.addHandler(SysLogHandler(address="/dev/log"))
+    logger.setLevel(logging.INFO)
 
     load_dotenv()
     tg_bot_token = os.environ.get("TG_BOT_TOKEN")
@@ -37,9 +42,8 @@ async def main():
 
     bot = Bot(token=tg_bot_token)  # type:ignore
     send_msg = partial(send_message, bot, tg_chat_id)  # type:ignore
-    logger = logging.getLogger("tg logger")
+
     logger.addHandler(LogsHandler(send_msg))
-    logger.setLevel(logging.INFO)
     logger.info("Started dvmn bot")
 
     try:
