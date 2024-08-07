@@ -8,8 +8,10 @@ from logging.handlers import SysLogHandler
 from functools import partial
 from polling import poll_forever, send_message
 
+logger = logging.getLogger("tg logger")
 
-class LogsHandler(logging.Handler):
+
+class TgLogsHandler(logging.Handler):
     def __init__(self, send_msg: t.Callable):
         super().__init__()
         self.send_msg = send_msg
@@ -25,7 +27,6 @@ class ParamsMissing(Exception):
 
 
 async def main():
-    logger = logging.getLogger("tg logger")
     logger.addHandler(SysLogHandler(address="/dev/log"))
     logger.setLevel(logging.INFO)
 
@@ -43,7 +44,7 @@ async def main():
     bot = Bot(token=tg_bot_token)  # type:ignore
     send_msg = partial(send_message, bot, tg_chat_id)  # type:ignore
 
-    logger.addHandler(LogsHandler(send_msg))
+    logger.addHandler(TgLogsHandler(send_msg))
     logger.info("Started dvmn bot")
 
     try:
